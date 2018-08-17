@@ -5,6 +5,7 @@
   :dependencies [[org.clojure/clojure "1.8.0"]
                  [compojure "1.6.0"]
                  [ring/ring-defaults "0.3.1"]
+                 [ring-cors "0.1.11"]
                  [korma "0.4.3"]
                  [cheshire "5.8.0"]
                  [ring "1.6.3"]
@@ -15,6 +16,7 @@
   :main goose.core
   :profiles
   {:dev {:dependencies [[javax.servlet/servlet-api "2.5"]
-                        [ring/ring-mock "0.3.0"]]}})
+                        [ring/ring-mock "0.3.0"]
+                        [clj-gatling "0.11.0"]]}})
 
 

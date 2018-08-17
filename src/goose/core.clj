@@ -1,8 +1,12 @@
 (ns goose.core
   (:require [compojure.core :refer [GET POST PUT DELETE routes defroutes context]]
             [compojure.route :refer [resources not-found]]
-            [ring.middleware.defaults :refer [wrap-defaults site-defaults]]
+            [ring.middleware.defaults :refer [wrap-defaults site-defaults api-defaults]]
             [ring.middleware.reload :refer [wrap-reload]]
+            [ring.middleware.cors :refer [wrap-cors]]
+            [ring.middleware.params :refer [wrap-params]]
+            [ring.middleware.keyword-params :refer [wrap-keyword-params]]
+            [ring.util.response :as resp :refer [response status resource-response]]
             [cheshire.core :refer [generate-string parse-string]]
             [clojure.java.io :as io]
             [org.httpkit.server :as http]
@@ -31,7 +35,9 @@
 
 (defn generate-json-response [data]
   {:status 200
-   :headers {"Access-Control-Allow-Origin" "*" "Content-Type" "application/json"}
+   :headers {"Access-Control-Allow-Origin" "*"
+             "Access-Control-Allow-Methods" "POST GET PUT DELETE"
+             "Content-Type" "application/json"}
    :body data})
 
 (defn update-record [bird body]
@@ -40,13 +46,20 @@
 (defn delete-record [bird]
   bird)
 
+(defn index2-resp [] (-> "public/index2.html"
+                         io/resource
+                         io/input-stream
+                         response
+                         (assoc :headers {"Content-Type" "text/html; charset=utf-8"})))
+
 (defroutes app-routes
   (GET "/" [] (generate-html-response "Hello html"))
-  (context "/:ability" [ability]
+  (GET "/2" [] (index2-resp))
+  (POST "/post" {body :body} (store-record (parse-string (slurp body))))
+  (context "/birds/:ability" [ability]
            (defroutes ability-routes
              (GET "/" [] (generate-json-response
-                          (generate-string (select geese (where {:ability_id ability})))))
-             (POST "/" {body :body} (store-record body)))
+                          (generate-string (select geese (where {:ability_id ability}))))))
              (context "/:bird" [bird ability]
                       (defroutes bird-routes
                         (GET "/" [ability] (generate-json-response
@@ -58,11 +71,18 @@
   (not-found "Not Found")
   (resources "/"))
 
-(def reloadable-app
-  (wrap-reload #'app-routes))
-
 (def app
-  (wrap-defaults app-routes site-defaults))
+  (-> app-routes
+      wrap-reload
+      (wrap-cors
+       :access-control-allow-origin #"http://localhost:3449"
+       :access-control-allow-methods [:get :put :post :delete])
+      (wrap-defaults site-defaults)
+      wrap-params
+      wrap-keyword-params
+      ))
+
+;;(def app (wrap-defaults app-routes-cors api-defaults))
    
 (defonce server (atom nil))
 
@@ -79,7 +99,5 @@
 
 ;;(-main)
 
+
 ;;(stop-server)
-
-
-
